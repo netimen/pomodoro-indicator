@@ -1,3 +1,4 @@
+Slightly enhanced version: label showing estimated time, better icons, waking up every 1-min instead of 1-sec.
 Pomodoro indicator
 ==================
 App indicator for Ubuntu. The idea is to use this super technique in your ubuntu.
