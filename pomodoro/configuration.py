@@ -29,6 +29,7 @@ Configuration file
 """
 
 import os
+import gettext
 
 def base_directory():
     """Returns the base directory"""
@@ -40,3 +41,4 @@ def icon_directory():
 
 if __name__ == "__main__":
     print __doc__
+

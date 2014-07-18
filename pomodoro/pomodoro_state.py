@@ -54,6 +54,7 @@ RESTING_STATE = "resting"
 PAUSED_STATE = "paused"
 MAX_RESTING_TIME = 300
 MAX_WORKING_TIME = 1500
+MAX_WORKING_TIME = 63
 AVAILABLE_STATES = [WAITING_STATE, WORKING_STATE, RESTING_STATE, PAUSED_STATE]
 
 class PomodoroState(object):
@@ -71,7 +72,11 @@ class PomodoroState(object):
     def next_state(self):
         pass
 
-    def next_second(self):
+    def new_cycle(self):
+    	self.elapsed_time = 0
+        pass
+
+    def next_second(self, timer_length):
         """Returns true if the next second produce a state change."""
         return False
 
@@ -97,11 +102,14 @@ class PomodoroState(object):
     def waiting(self):
         return False
 
-    def running_next_second(self):
-        self.elapsed_time += 1
+    def estimated_time(self):
+        return self.max_time - self.elapsed_time
+
+    def running_next_second(self, timer_length):
+        self.elapsed_time += timer_length
         if self.elapsed_time >= self.max_time:
             self.next_state()
-            self.pomodoro.state.elapsed_time = 0
+            self.pomodoro.state.new_cycle()
             return True
         return False
 
@@ -134,18 +142,29 @@ class WorkingState(PomodoroState):
         self.name = WORKING_STATE
         self.max_time = MAX_WORKING_TIME
         self.elapsed_time = 0
+        self.drop_cycles()
 
     def next_state(self):
         self.pomodoro.state = self.pomodoro.resting_state
 
+    def new_cycle(self):
+    	self.elapsed_time = 0
+    	self.cycles_count += 1
+
     def pause(self):
         self.pause_it()
 
-    def next_second(self):
-        return self.running_next_second()
+    def next_second(self, timer_length):
+        return self.running_next_second(timer_length)
 
     def working(self):
         return True
+
+    def cycles(self):
+    	return self.cycles_count
+
+    def drop_cycles(self):
+    	self.cycles_count = 1
 
 class RestingState(PomodoroState):
     def __init__(self, pomodoro):
@@ -159,8 +178,8 @@ class RestingState(PomodoroState):
     def pause(self):
         self.pause_it()
 
-    def next_second(self):
-        return self.running_next_second()
+    def next_second(self, timer_length):
+        return self.running_next_second(timer_length)
 
     def resting(self):
         return True
@@ -202,11 +221,24 @@ class PomodoroMachine(object):
     def elapsed_time(self):
         return self.convert_time(self.state.elapsed_time)
 
+    def estimated_time(self):
+        return self.convert_time_pretty(self.state.estimated_time())
+
+    def estimated_minutes(self):
+        return self.minutes(self.state.estimated_time() - 1) # -1 to return 0 when 60 seconds left
+
+    def estimated_seconds(self):
+        return self.seconds(self.state.estimated_time())
+
+    def cycles(self):
+    	return self.working_state.cycles()
+
     def start(self):
         self.state.start()
 
     def stop(self):
         self.state.stop()
+        self.working_state.drop_cycles()
 
     def pause(self):
         self.state.pause()
@@ -214,9 +246,9 @@ class PomodoroMachine(object):
     def resume(self):
         self.state.resume()
 
-    def next_second(self):
+    def next_second(self, timer_length):
         """Returns true if the next second produce a state change."""
-        return self.state.next_second()
+        return self.state.next_second(timer_length)
 
     def show_start_button(self):
         return self.state.working()
@@ -230,8 +262,21 @@ class PomodoroMachine(object):
     def show_resume_button(self):
         return self.state.paused()
 
+    def minutes(self, seconds):
+    	return seconds / 60
+
+    def seconds(self, seconds):
+    	return seconds - self.minutes(seconds)  * 60
+
+    def convert_time_pretty(self, seconds):
+        minutes = self.minutes(seconds)
+        if minutes > 0:
+        	return "%d" % (minutes, )
+        seconds -= minutes * 60
+        return "0:%02d" % (seconds, )
+
     def convert_time(self, seconds):
-        minutes = seconds / 60
+        minutes = self.minutes(seconds)
         seconds -= minutes * 60
         return "%02d:%02d" % (minutes, seconds)
 
