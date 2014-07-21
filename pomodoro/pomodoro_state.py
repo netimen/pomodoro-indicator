@@ -54,7 +54,6 @@ RESTING_STATE = "resting"
 PAUSED_STATE = "paused"
 MAX_RESTING_TIME = 300
 MAX_WORKING_TIME = 1500
-MAX_WORKING_TIME = 63
 AVAILABLE_STATES = [WAITING_STATE, WORKING_STATE, RESTING_STATE, PAUSED_STATE]
 
 class PomodoroState(object):
@@ -269,7 +268,7 @@ class PomodoroMachine(object):
     	return seconds - self.minutes(seconds)  * 60
 
     def convert_time_pretty(self, seconds):
-        minutes = self.minutes(seconds)
+        minutes = self.minutes(seconds if seconds < 120 else seconds - 1) # -1 for making 2:00 display as 1:00
         if minutes > 0:
         	return "%d" % (minutes, )
         seconds -= minutes * 60
