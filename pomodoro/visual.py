@@ -112,6 +112,7 @@ class PomodoroIndicator:
         self.menu_setup()
         self.ind.set_menu(self.menu)
         self.timer_id = None
+        self.start(None)
 
     def menu_setup(self):
         self.menu = gtk.Menu()
