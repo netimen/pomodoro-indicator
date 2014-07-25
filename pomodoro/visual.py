@@ -32,6 +32,7 @@ import sys
 import pomodoro_state
 import configuration
 import gettext
+import time
 from datetime import date
 
 from gettext import gettext as _
@@ -208,13 +209,14 @@ class PomodoroIndicator:
     # Methods that interacts with the PomodoroState collaborator.
     def update_timer(self):
         today = date.today()
+        print "update", today, self.today
         if today != self.today:
             self.stop(None)
             self.start(None)
             return
 
         self.today = today
-        changed = self.pomodoro.next_second(self.timer_length)
+        changed = self.pomodoro.next_second(self.calc_timer())
         self.start_timer()
         self.update_label()
         self.change_timer_menu_item_label(self.pomodoro.elapsed_time())
@@ -236,11 +238,13 @@ class PomodoroIndicator:
 
     def pause(self, widget, data=None):
         self.stop_timer()
+    	self.elapsed = time.time() - self.start_time
+    	print "pause", self.elapsed
         self.pomodoro.pause()
         self.redraw_menu()
 
     def resume(self, widget, data=None):
-        self.start_timer()
+        self.start_timer(resume=True)
         self.pomodoro.resume()
         self.redraw_menu()
 
@@ -253,9 +257,12 @@ class PomodoroIndicator:
         self.ind.set_icon(self.icon_manager.idle_icon())
         self.update_label()
 
-    def start_timer(self):
-        self.calc_timer()
+    def start_timer(self, resume=False):
+    	self.timer_length = int(self.timer_length - self.elapsed) if resume else self.calc_timer()
+    	if not resume:
+            print "start", self.timer_length, self.pomodoro.estimated_time(), self.pomodoro.estimated_minutes(), self.pomodoro.estimated_seconds()
         self.timer_id = gobject.timeout_add(self.timer_length * 1000, self.update_timer) 
+        self.start_time = time.time()
 
     def calc_timer(self):
         self.timer_length = 1
@@ -263,7 +270,7 @@ class PomodoroIndicator:
             self.timer_length = self.pomodoro.estimated_seconds() # seconds till next minute.
             if self.timer_length == 0:
                 self.timer_length = 60
-        # print self.timer_length, self.pomodoro.state.estimated_time(), self.pomodoro.estimated_minutes(), self.pomodoro.estimated_seconds()
+        return self.timer_length
 
     def stop_timer(self):
         if self.timer_id != None:
